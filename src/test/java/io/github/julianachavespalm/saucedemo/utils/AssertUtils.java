@@ -1,4 +1,4 @@
-package io.github.julianachavespalm.validadorbandeiracartao.utils;
+package io.github.julianachavespalm.saucedemo.utils;
 
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.SelenideElement;

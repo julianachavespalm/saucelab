@@ -1,4 +1,4 @@
-package io.github.julianachavespalm.validadorbandeiracartao.utils;
+package io.github.julianachavespalm.saucedemo.utils;
 
 import org.json.JSONArray;
 import org.junit.jupiter.api.DynamicTest;
