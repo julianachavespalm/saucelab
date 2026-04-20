@@ -24,7 +24,7 @@ public class SaucedemoTest {
     }
 
     @Test
-    @Tag("regression")
+    @Tag("regressive")
     public void testLoginWithCredentials() {
         mainPage.login();
         $(".app_logo").shouldBe(visible).shouldHave(exactText("Swag Labs"));
