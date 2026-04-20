@@ -36,6 +36,15 @@
             distribution: 'temurin'
             cache: maven
 
+        - name: Install Google Chrome
+          run: |
+            sudo apt update
+            sudo apt install -y wget gnupg
+            wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+            sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list'
+            sudo apt update
+            sudo apt install -y google-chrome-stable
+
         - name: Rodar testes por tag
           if: github.event.inputs.filter-type == 'tag'
           run: mvn clean test -Dgroups=${{ github.event.inputs.test-filter }}
