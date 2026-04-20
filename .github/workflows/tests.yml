@@ -5,6 +5,25 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    # 08:00 UTC (5:00 AM ET) - Segunda a Sexta
+    - cron: '0 8 * * 1-5'
+    # 14:00 UTC (11:00 AM ET) - Segunda a Sexta
+    - cron: '0 14 * * 1-5'
+    # 20:00 UTC (5:00 PM ET) - Segunda a Sexta
+    - cron: '0 20 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Selecione quais testes rodar'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - login_only
+          - smoke_tests
+          - regression_tests
 
 jobs:
   test:
@@ -29,7 +48,19 @@ jobs:
         env:
           STANDARD_USER: ${{ secrets.STANDARD_USER }}
           STANDARD_PASSWORD: ${{ secrets.STANDARD_PASSWORD }}
-        run: mvn clean test
+          TEST_SCOPE: ${{ github.event.inputs.test_scope || 'all' }}
+        run: |
+          if ($env:TEST_SCOPE -eq "all") {
+            mvn clean test
+          } elseif ($env:TEST_SCOPE -eq "login_only") {
+            mvn clean test -Dtest=LoginPage*
+          } elseif ($env:TEST_SCOPE -eq "smoke_tests") {
+            mvn clean test -Dgroups=smoke
+          } elseif ($env:TEST_SCOPE -eq "regression_tests") {
+            mvn clean test -Dgroups=regression
+          } else {
+            mvn clean test
+          }
 
       - name: Publish Test Results
         if: always()
