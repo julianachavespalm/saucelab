@@ -1,94 +1,58 @@
-name: Tests
+name: Testes Regressivos
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
-  schedule:
-    # 08:00 UTC (5:00 AM ET) - Segunda a Sexta
-    - cron: '0 8 * * 1-5'
-    # 14:00 UTC (11:00 AM ET) - Segunda a Sexta
-    - cron: '0 14 * * 1-5'
-    # 20:00 UTC (5:00 PM ET) - Segunda a Sexta
-    - cron: '0 20 * * 1-5'
   workflow_dispatch:
     inputs:
-      test_scope:
-        description: 'Selecione quais testes rodar'
+      test-filter:
+        description: 'Filtro de testes (Test ou Tag)'
+        required: false
+        default: 'regressive'
+      filter-type:
+        description: 'Tipo de filtro'
         required: true
-        default: 'all'
+        default: 'tag'
         type: choice
         options:
-          - all
-          - login_only
-          - smoke_tests
-          - regression_tests
+          - tag
+          - test-name
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   test:
-    runs-on: windows-latest
-
-    permissions:
-      contents: read
-      checks: write
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
-      - name: Run tests with Maven
-        env:
-          STANDARD_USER: ${{ secrets.STANDARD_USER }}
-          STANDARD_PASSWORD: ${{ secrets.STANDARD_PASSWORD }}
-          TEST_SCOPE: ${{ github.event.inputs.test_scope || 'all' }}
-        run: |
-          if ($env:TEST_SCOPE -eq "all") {
-            mvn clean test
-          } elseif ($env:TEST_SCOPE -eq "login_only") {
-            mvn clean test -Dtest=LoginPage*
-          } elseif ($env:TEST_SCOPE -eq "smoke_tests") {
-            mvn clean test -Dgroups=smoke
-          } elseif ($env:TEST_SCOPE -eq "regression_tests") {
-            mvn clean test -Dgroups=regression
-          } else {
-            mvn clean test
-          }
+      - name: Rodar testes por tag
+        if: github.event.inputs.filter-type == 'tag'
+        run: mvn clean test -Dgroups=${{ github.event.inputs.test-filter }}
 
-      - name: Publish Test Results
+      - name: Rodar testes por nome
+        if: github.event.inputs.filter-type == 'test-name'
+        run: mvn clean test -Dtest=${{ github.event.inputs.test-filter }}
+
+      - name: Gerar relatório Allure
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+        uses: simple-elf/allure-report-action@master
         with:
-          files: target/surefire-reports/*.xml
-          check_name: Test Results
+          allure_results: target/allure-results
+          allure_history: allure-history
+          keep_reports: 20
 
-      - name: Upload Test Artifacts
+      - name: Deploy relatório
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          name: test-results
-          path: target/surefire-reports/
-          retention-days: 30
-
-      - name: Comment PR with Test Summary
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const testReports = fs.readdirSync('target/surefire-reports').filter(f => f.endsWith('.xml'));
-            if (testReports.length > 0) {
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '✅ Testes executados! Verifique os resultados na aba "Checks".'
-              });
-            }
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-report
